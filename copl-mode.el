@@ -98,7 +98,10 @@
     ret))
 
 (defun count-level ()
-  (- (count-char-inbuf ?{) (count-char-inbuf ?})))
+  (- (- (count-char-inbuf ?{) (count-char-inbuf ?}))
+     (if (char-equal (aref (buffer-substring (point) (+ (point) 1)) 0) ?})
+         1
+         0)))
 
 (defun count-char-inbuf (c)
   (save-excursion
