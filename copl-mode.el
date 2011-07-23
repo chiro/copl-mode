@@ -54,6 +54,8 @@
         (,copl-rule-regexp . font-lock-constant-face)
 ))
 
+(defvar copl-tab-width 4)
+
 
 (define-derived-mode copl-mode fundamental-mode
   "copl mode"
@@ -62,7 +64,7 @@
   (setq font-lock-defaults '((copl-font-lock-keywords)))
 
   (set (make-local-variable 'indent-tab-mode) nil)
-  (set (make-local-variable 'tab-width) 4)
+  (set (make-local-variable 'tab-width) copl-tab-width)
   (set (make-local-variable 'indent-line-function) 'copl-indent-line)
 
   ;;modify keymap
@@ -98,23 +100,20 @@
     ret))
 
 (defun count-level ()
-  (- (- (count-char-inbuf ?{) (count-char-inbuf ?}))
-     (if (char-equal (aref (buffer-substring (point) (+ (point) 1)) 0) ?})
-         1
-         0)))
+  (- (count-char-inbuf ?{ (point-min) (point)) (count-char-inbuf ?} (point-min) (+ (point) 1))))
 
-(defun count-char-inbuf (c)
-  (save-excursion
-    (count-char (buffer-substring (point-min) (point)) c)))
+(defun count-char-inbuf (c start end)
+    (count-char (buffer-substring start end) c))
 
 (defun delete-spaces ()
-  (let ((p (beginning-of-line)))
-    (while (char-equal (aref (buffer-substring (point) (+ (point) 1)) 0) 32)
-      (delete-char 1))))
+  (while (char-equal (aref (buffer-substring (point) (+ (point) 1)) 0) 32)
+    (delete-char 1)))
 
 (defun copl-indent-line ()
   (let ((l (count-level)))
     (delete-spaces)
-    (insert-char 32 (* 4 l))))
+    (insert-char 32 (* 4 l))
+    (when (string= (buffer-substring (point) (+ (point) 1)) "}")
+      (forward-char 1))))
 
 (provide 'copl-mode)
