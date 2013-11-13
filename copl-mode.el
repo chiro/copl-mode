@@ -1,6 +1,7 @@
 (defvar copl-trans-regexp ">>\\|evalto\\|--->\\|-*->\\|-d->\\||-\\|->\\|=>\\|==>")
 
 (defvar copl-keyword '("by" "def"))
+(defvar copl-keyword-regexp (regexp-opt copl-keyword 'words))
 
 (defvar copl-rule
   '("P-Zero" "P-Succ" "T-Zero" "T-Succ"
@@ -32,13 +33,11 @@
     "C-Minus" "C-Times" "C-Lt" "C-IfT" "C-IfF"
     "E-LetCc" "C-LetBody" "C-EvarArg" "C-EvalFun"
     "C-EvalFunR" "C-EvalFunC" "C-EvalConsR" "C-Cons"
-    "C-MatchNil" "C-MatchCons" "E-Ref" "E-Deref" "E-Assign" ))
+    "C-MatchNil" "C-MatchCons" "E-Ref" "E-Deref" "E-Assign"))
 
-(defvar copl-keyword-regexp (regexp-opt copl-keyword 'words))
 (defvar copl-rule-regexp (regexp-opt copl-rule 'words))
-
-(setq copl-keyword nil)
 (setq copl-rule nil)
+
 
 (defun copl-comment-dwim (arg)
   "Comment and uncommend curren line or region in a smart way."
@@ -47,73 +46,45 @@
   (let ((comment-start "//") (comment-end ""))
     (comment-dwim arg)))
 
-(setq copl-font-lock-keywords
-      `(
-        (,copl-trans-regexp . font-lock-function-name-face)
-        (,copl-keyword-regexp . font-lock-keyword-face)
-        (,copl-rule-regexp . font-lock-constant-face)
-))
+(defvar copl-mode-hook nil)
 
-(defvar copl-tab-width 4)
+;; copl-mode-map is empty.
+(defvar copl-mode-map (make-sparse-keymap))
+
+;;;###autoload
+(add-to-list 'auto-mode-alist '("\\.copl\\'" . copl-mode))
+
+(defconst copl-font-lock-keywords
+  (list
+   '(">>\\|evalto\\|--->\\|-*->\\|-d->\\||-\\|->\\|=>\\|==>" . font-lock-function-name-face)
+   '("\\<\\(by\\|def\\)\\>" . font-lock-keyword-face)
+   '("\\<\\(B-\\(?:Lt\\|\\(?:Minu\\|Plu\\|Time\\)s\\)\\|C-\\(?:Cons\\|Eva\\(?:l\\(?:ConsR\\|Fun[CR]?\\|R\\)\\|rArg\\)\\|If[FT]\\|L\\(?:etBody\\|t\\)\\|M\\(?:atch\\(?:Cons\\|Nil\\)\\|inus\\)\\|Plus\\|Ret\\|Times\\)\\|DR-\\(?:Plus[LR]?\\|Times[LR]?\\)\\|E-\\(?:A\\(?:pp\\(?:Rec\\)?\\|ssign\\)\\|B\\(?:inOp\\|ool\\)\\|Const?\\|Deref\\|Fun\\|I\\(?:f\\(?:Error\\|FError\\|Int\\|TError\\|[FT]\\)?\\|nt\\)\\|L\\(?:et\\(?:\\(?:C\\|Re\\)c\\)?\\|t\\(?:Bool[LR]\\|Error[LR]\\)?\\)\\|M\\(?:atch\\(?:Cons\\|M[12]\\|N\\(?:il\\)?\\)\\|inus\\(?:Bool[LR]\\|Error[LR]\\)?\\)\\|Nil\\|Plus\\(?:Bool[LR]\\|Error[LR]\\)?\\|Ref\\|Times\\(?:Bool[LR]\\|Error[LR]\\)?\\|Var[12]?\\)\\|L-\\(?:Succ\\(?:R\\|Succ\\)?\\|Trans\\|Zero\\)\\|M\\(?:-\\(?:Cons\\|Nil\\|Var\\|Wild\\)\\|R-\\(?:Multi\\|One\\|Zero\\)\\)\\|NM-\\(?:Cons\\(?:Cons[LR]\\|Nil\\)\\|NilCons\\)\\|P-\\(?:Succ\\|Zero\\)\\|R-\\(?:Plus[LR]?\\|Times[LR]?\\)\\|T\\(?:-\\(?:A\\(?:bs\\|pp\\)\\|Bool\\|Cons\\|Fun\\|I\\(?:f\\|nt\\)\\|L\\(?:et\\(?:Rec\\)?\\|t\\)\\|M\\(?:atch\\|inus\\)\\|Nil\\|Plus\\|Succ\\|Times\\|Var\\|Zero\\)\\|r-\\(?:App\\|Bool\\|Fun\\|I\\(?:f\\|nt\\)\\|L\\(?:et\\(?:Rec\\)?\\|t\\)\\|Minus\\|Plus\\|Times\\|Var[12]\\)\\)\\)\\>" . font-lock-constant-face))
+  "Default highlighting expressions for CoPL mode")
+
+(defvar copl-mode-syntax-table
+  (let ((st (make-syntax-table)))
+    ;; Comments
+    (modify-syntax-entry ?\/ ". 12b" st)
+    (modify-syntax-entry ?\n "> b" st)
+
+    (modify-syntax-entry ?\( ". 1" st)
+    (modify-syntax-entry ?\) ". 4" st)
+    (modify-syntax-entry ?*  ". 23" st)
+    st)
+  "Syntax table for copl-mode")
 
 
-(define-derived-mode copl-mode fundamental-mode
-  "copl mode"
+(defun copl-mode ()
   "Major mode for CoPL"
+  (interactive)
+  (kill-all-local-variables)
+  (set-syntax-table copl-mode-syntax-table)
+  (use-local-map copl-mode-map)
+  (set (make-local-variable 'font-lock-defaults)
+       '(copl-font-lock-keywords))
 
-  (setq font-lock-defaults '((copl-font-lock-keywords)))
-
-  (set (make-local-variable 'indent-tab-mode) nil)
-  (set (make-local-variable 'tab-width) copl-tab-width)
-  (set (make-local-variable 'indent-line-function) 'copl-indent-line)
-
-  ;;modify keymap
-  (define-key copl-mode-map [remap comment-dwim] 'copl-comment-dwim)
-
-  ;; comment
-  (modify-syntax-entry ?\/ ". 12b" copl-mode-syntax-table)
-  (modify-syntax-entry ?\n "> b" copl-mode-syntax-table)
-
-  (modify-syntax-entry ?\( ". 1" copl-mode-syntax-table)
-  (modify-syntax-entry ?\) ". 4" copl-mode-syntax-table)
-  (modify-syntax-entry ?*  ". 23" copl-mode-syntax-table)
-
-  ;;indentation
-  (set (make-local-variable 'indent-line-function) 'copl-indent-line)
-
-  ;; clear memory
-  (setq copl-keyword-regexp nil)
-  (setq copl-trans-regexp nil)
-  (setq copl-rule-regexp nil)
-)
-
-
-;; indentation
-(defun count-char (str c)
-  (let ((len (length str))
-        (i 0)
-        (ret 0))
-    (while (< i len)
-      (when (char-equal (aref str i) c)
-        (incf ret))
-      (incf i))
-    ret))
-
-(defun count-level ()
-  (- (count-char-inbuf ?{ (point-min) (point)) (count-char-inbuf ?} (point-min) (+ (point) 1))))
-
-(defun count-char-inbuf (c start end)
-    (count-char (buffer-substring start end) c))
-
-(defun delete-spaces ()
-  (while (char-equal (aref (buffer-substring (point) (+ (point) 1)) 0) 32)
-    (delete-char 1)))
-
-(defun copl-indent-line ()
-  (let ((l (count-level)))
-    (delete-spaces)
-    (insert-char 32 (* 4 l))
-    (when (string= (buffer-substring (point) (+ (point) 1)) "}")
-      (forward-char 1))))
+  (setq major-mode 'copl-mode)
+  (setq mode-name "CoPL")
+  (run-hooks 'copl-mode-hook))
 
 (provide 'copl-mode)
