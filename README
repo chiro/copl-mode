@@ -1,6 +1,0 @@
-(require 'copl-mode)
-
-(setq auto-mode-alist
-      (append
-       '(("\\.copl$" . copl-mode))
-       auto-mode-alist))
